@@ -23,6 +23,65 @@ client.on("messageCreate", async (message) => {
   if (!config.channelIds.includes(message.channelId)) return;
   if (message.author.bot) return;
 
+  // Manual bookmark command: reply to a message with !bookmark to force-save it
+  if (
+    message.content.trim().toLowerCase().startsWith(config.bookmarkCommand.toLowerCase())
+  ) {
+    if (!message.reference?.messageId) {
+      log("info", "manual bookmark ignored: not a reply", {
+        invokedBy: message.author.username,
+      });
+      return;
+    }
+
+    try {
+      const referenced = await message.channel.messages.fetch(
+        message.reference.messageId,
+      );
+      const urls = extractUrls(referenced);
+
+      if (urls.length === 0) {
+        log("info", "manual bookmark: no urls in referenced message", {
+          invokedBy: message.author.username,
+          referencedMessageId: referenced.id,
+        });
+        await referenced.react(config.errorEmoji);
+        return;
+      }
+
+      const channelName =
+        "name" in referenced.channel
+          ? `#${referenced.channel.name}`
+          : referenced.channelId;
+      const note = `Manually bookmarked by @${message.author.username} in ${channelName}\n\n> ${referenced.content}`;
+
+      let anySuccess = false;
+      for (const url of urls) {
+        log("info", "manual bookmark", {
+          url,
+          invokedBy: message.author.username,
+        });
+        const result = await submitBookmark(url, note);
+        if (result.ok) {
+          anySuccess = true;
+        } else {
+          log("warn", "manual bookmark submission failed", {
+            url,
+            error: result.error,
+          });
+        }
+      }
+
+      await referenced.react(anySuccess ? config.successEmoji : config.errorEmoji);
+    } catch (err) {
+      log("error", "manual bookmark error", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      await message.react(config.errorEmoji);
+    }
+    return;
+  }
+
   const urls = extractUrls(message);
   if (urls.length === 0) return;
 
