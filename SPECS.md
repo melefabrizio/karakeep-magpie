@@ -350,7 +350,9 @@ export async function submitBookmark(
 ## Open Questions / Future Work
 
 - **Rate limiting**: if a channel gets flooded with links, the bot will fire many LLM calls in parallel. Consider a simple concurrency limiter (e.g. `p-limit`).
-- **Multi-guild support**: current design assumes a single Discord server. Scaling to multiple servers only requires making `channelIds` guild-aware.
+- **All-channel**: current design assumes a selection of channel. Consider enabling the bot on all server's channels.
 - **Prompt tuning**: the classification prompt will need iteration based on real traffic. Consider logging all LLM decisions for a week before trusting it fully.
 - **Feedback loop**: a Discord slash command like `/magpie why <url>` that explains why a URL was or wasn't bookmarked could help tune the system.
 - **`messageUpdate` handler**: edited messages that add a URL are currently ignored.
+- **Disable LLM**: make LLM optional by omitting bedrock credentials.
+- **support more ai providers out of the box**
