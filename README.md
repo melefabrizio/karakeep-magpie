@@ -2,6 +2,9 @@
 
 A Discord bot that watches channels for URLs, classifies them with AI, and saves the interesting ones to [Karakeep](https://karakeep.app) as bookmarks.
 
+> **Intended for internal use in private, trusted Discord servers.**
+> The bot fetches arbitrary URLs posted by members and sends their content to an external LLM for classification. In a public or untrusted server this can be abused to exfiltrate data or trigger requests to internal network resources. Do not add Magpie to servers where you cannot vet every member.
+
 ## How it works
 
 Every message posted to a monitored channel goes through a three-step pipeline:
@@ -11,6 +14,10 @@ Every message posted to a monitored channel goes through a three-step pipeline:
 3. **LLM classification** — sends the metadata to Claude Haiku via AWS Bedrock. The model decides whether the link is worth bookmarking for a software engineering team, and explains why.
 
 Links that pass all three steps are submitted to Karakeep, with a note recording who shared it and in which channel. The bot reacts to the original message with 🐦 on success or ❌ on failure.
+
+### Manual bookmarking
+
+Any member can force-save a link by right-clicking (or long-pressing on mobile) a message and selecting **Apps → Save to Magpie**. This bypasses the domain filter and LLM classification and saves the first URL found in the message directly to Karakeep. Useful for links that would otherwise be filtered out or classified as not worth saving.
 
 ## Prerequisites
 
@@ -58,7 +65,7 @@ yarn start
 
 ## Deployment
 
-The bot is a single long-lived process. Run it anywhere you can run a Node.js container.
+The bot is a single long-lived process. Run it anywhere you can run a Node.js container. Working Dockerfile provided.
 
 For AWS ECS, pass credentials via a task IAM role rather than environment variables — the AWS SDK will pick them up automatically through the default credential provider chain.
 
