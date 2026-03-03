@@ -6,16 +6,16 @@ Magpie is a Discord bot that monitors configured channels, extracts URLs from me
 
 ## Tech Stack
 
-| Component         | Choice                                          | Rationale                                                        |
-| ----------------- | ----------------------------------------------- | ---------------------------------------------------------------- |
-| Runtime           | Node.js (>=20 LTS)                              | Best Discord bot ecosystem, mature tooling                       |
-| Discord library   | `discord.js` v14                                 | De facto standard, excellent docs, full gateway support          |
-| AI provider       | AWS Bedrock                                      | Already in Fabrizio's infra comfort zone, no separate API keys   |
-| AI SDK            | Vercel AI SDK (`ai` + `@ai-sdk/amazon-bedrock`)  | Minimal config, clean async API, swappable providers             |
-| Model             | Claude Haiku 4.5 (`anthropic.claude-haiku-4-5-v1`) | Fast, cheap, more than enough for URL triage. Note: "Haiku 4.7" does not exist; 4.5 is the latest Haiku on Bedrock |
-| HTTP client       | Native `fetch` (Node 20+)                        | No extra dependency for Karakeep API calls and metadata fetching |
-| Deployment        | Docker container                                 | Runs alongside the Karakeep instance via docker-compose          |
-| Language          | TypeScript                                       | Type safety without overhead, compiles to JS                     |
+| Component       | Choice                                             | Rationale                                                                                                          |
+| --------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Runtime         | Node.js (>=20 LTS)                                 | Best Discord bot ecosystem, mature tooling                                                                         |
+| Discord library | `discord.js` v14                                   | De facto standard, excellent docs, full gateway support                                                            |
+| AI provider     | AWS Bedrock                                        | Already in Fabrizio's infra comfort zone, no separate API keys                                                     |
+| AI SDK          | Vercel AI SDK (`ai` + `@ai-sdk/amazon-bedrock`)    | Minimal config, clean async API, swappable providers                                                               |
+| Model           | Claude Haiku 4.5 (`anthropic.claude-haiku-4-5-v1`) | Fast, cheap, more than enough for URL triage. Note: "Haiku 4.7" does not exist; 4.5 is the latest Haiku on Bedrock |
+| HTTP client     | Native `fetch` (Node 20+)                          | No extra dependency for Karakeep API calls and metadata fetching                                                   |
+| Deployment      | Docker container                                   | Runs alongside the Karakeep instance via docker-compose                                                            |
+| Language        | TypeScript                                         | Type safety without overhead, compiles to JS                                                                       |
 
 ## Configuration
 
@@ -25,10 +25,10 @@ All config lives in a single `config.ts` (or env vars). No database required.
 export const config = {
   // Discord
   discordToken: process.env.DISCORD_TOKEN!,
-  channelIds: process.env.CHANNEL_IDS!.split(","),       // e.g. "123456,789012"
+  channelIds: process.env.CHANNEL_IDS!.split(","), // e.g. "123456,789012"
 
   // Karakeep
-  karakeepApiUrl: process.env.KARAKEEP_API_URL!,          // e.g. "https://karakeep.example.com"
+  karakeepApiUrl: process.env.KARAKEEP_API_URL!, // e.g. "https://karakeep.example.com"
   karakeepApiKey: process.env.KARAKEEP_API_KEY!,
 
   // AWS Bedrock (picked up automatically from env / instance profile)
@@ -42,7 +42,9 @@ export const config = {
     "clickup.com",
     "monade.io",
     "monadeapps.xyz",
-    ...(process.env.BLOCKED_DOMAINS?.split(",").map((d) => d.trim()).filter(Boolean) ?? []),
+    ...(process.env.BLOCKED_DOMAINS?.split(",")
+      .map((d) => d.trim())
+      .filter(Boolean) ?? []),
   ],
 
   // Metadata fetch timeout
@@ -255,6 +257,7 @@ AWS credentials for Bedrock are passed via environment variables (`AWS_ACCESS_KE
 Tagging is handled entirely by Karakeep after submission. The classifier no longer needs to produce tags, and the Karakeep API call should not include a `tags` field.
 
 Changes required:
+
 - `src/pipeline/classify.ts` — remove `tags` from Zod schema and `ClassifyResult`; remove unused `import { error } from "console"`
 - `src/karakeep.ts` — remove `tags` parameter from `submitBookmark`
 - `src/index.ts` — remove `tags` from the `submitBookmark` call
@@ -276,6 +279,7 @@ Config change: spread `process.env.BLOCKED_DOMAINS?.split(",")` into `blockedDom
 ### [IMPLEMENTED] Metadata: follow redirects + existence check
 
 `fetchMetadata` should:
+
 1. **Follow redirects** transparently (Node `fetch` does this by default; no change needed for the common case). Track the final resolved URL so the classifier sees the canonical destination, not a `t.co` or `bit.ly` shortener.
 2. **Treat non-200 final responses as `fetchFailed: true`** and include a `resolvedUrl` field in `UrlMetadata` when the URL was redirected.
 
@@ -307,6 +311,7 @@ If the response contains at least one bookmark matching that URL, skip submissio
 Use the **resolved URL** (after redirects) for the lookup so that `bit.ly/xxx` and the canonical URL don't create duplicates.
 
 Implementation sketch in `src/karakeep.ts`:
+
 ```typescript
 export async function isAlreadyBookmarked(url: string): Promise<boolean> { ... }
 ```
@@ -332,8 +337,12 @@ This preserves the human context (who shared it, why, with what comment) inside 
 The note is built in `index.ts` from `message.author.username`, `message.channel` (name or id), and `message.content` (with the URL stripped or kept — keep it for context).
 
 `submitBookmark` signature change:
+
 ```typescript
-export async function submitBookmark(url: string, note?: string): Promise<BookmarkResult>
+export async function submitBookmark(
+  url: string,
+  note?: string,
+): Promise<BookmarkResult>;
 ```
 
 ---

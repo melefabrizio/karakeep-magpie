@@ -16,14 +16,18 @@ export const config = {
     "clickup.com",
     "monade.io",
     "monadeapps.xyz",
-    ...(process.env.BLOCKED_DOMAINS?.split(",").map((d) => d.trim()).filter(Boolean) ?? []),
+    ...(process.env.BLOCKED_DOMAINS?.split(",")
+      .map((d) => d.trim())
+      .filter(Boolean) ?? []),
   ],
 
   // Metadata fetch timeout
   fetchTimeoutMs: 5000,
 
   // Classifier system prompt (overridable via env)
-  classifySystemPrompt: process.env.CLASSIFY_SYSTEM_PROMPT ?? `You are the final gatekeeper for a bookmark bot used by a small, senior software engineering team.
+  classifySystemPrompt:
+    process.env.CLASSIFY_SYSTEM_PROMPT ??
+    `You are the final gatekeeper for a bookmark bot used by a small, senior software engineering team.
 
 Your job: decide whether a URL deserves a permanent bookmark. You are the last line of defence — if something slips past you it gets saved forever, so be selective.
 

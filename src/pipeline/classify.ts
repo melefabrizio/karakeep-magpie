@@ -39,7 +39,9 @@ Respond with interesting: true only if it clearly fits the SAVE criteria above. 
     });
     return object;
   } catch (err) {
-    log("warn", "classification failed", { error: err instanceof Error ? err.message : String(err) });
+    log("warn", "classification failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return { interesting: false, reason: "classification failed" };
   }
 }

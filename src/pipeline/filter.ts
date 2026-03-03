@@ -14,7 +14,7 @@ export function filterByDomain(url: string): FilterResult {
   }
 
   const blocked = config.blockedDomains.find(
-    (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+    (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
   );
 
   if (blocked) {

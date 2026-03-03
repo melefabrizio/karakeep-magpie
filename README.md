@@ -30,16 +30,16 @@ cp .env.example .env
 
 ### Environment variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `DISCORD_TOKEN` | yes | Bot token from the Discord Developer Portal |
-| `CHANNEL_IDS` | yes | Comma-separated IDs of channels to monitor |
-| `KARAKEEP_API_URL` | yes | Base URL of your Karakeep instance |
-| `KARAKEEP_API_KEY` | yes | Karakeep API key |
-| `AWS_REGION` | no | Bedrock region (default: `eu-west-1`) |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | no | AWS credentials (or use `AWS_PROFILE` / instance role) |
-| `BLOCKED_DOMAINS` | no | Extra comma-separated domains to ignore, merged with the built-in list |
-| `CLASSIFY_SYSTEM_PROMPT` | no | Override the LLM system prompt used for classification (default prompt is tuned for software engineering teams) |
+| Variable                                      | Required | Description                                                                                                     |
+| --------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `DISCORD_TOKEN`                               | yes      | Bot token from the Discord Developer Portal                                                                     |
+| `CHANNEL_IDS`                                 | yes      | Comma-separated IDs of channels to monitor                                                                      |
+| `KARAKEEP_API_URL`                            | yes      | Base URL of your Karakeep instance                                                                              |
+| `KARAKEEP_API_KEY`                            | yes      | Karakeep API key                                                                                                |
+| `AWS_REGION`                                  | no       | Bedrock region (default: `eu-west-1`)                                                                           |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | no       | AWS credentials (or use `AWS_PROFILE` / instance role)                                                          |
+| `BLOCKED_DOMAINS`                             | no       | Extra comma-separated domains to ignore, merged with the built-in list                                          |
+| `CLASSIFY_SYSTEM_PROMPT`                      | no       | Override the LLM system prompt used for classification (default prompt is tuned for software engineering teams) |
 
 ### Blocklist
 

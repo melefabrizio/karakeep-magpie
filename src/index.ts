@@ -32,7 +32,8 @@ client.on("messageCreate", async (message) => {
     urlCount: urls.length,
   });
 
-  const channelName = 'name' in message.channel ? `#${message.channel.name}` : message.channelId;
+  const channelName =
+    "name" in message.channel ? `#${message.channel.name}` : message.channelId;
   const note = `Shared by @${message.author.username} in ${channelName}\n\n> ${message.content}`;
 
   for (const url of urls) {
@@ -47,7 +48,11 @@ client.on("messageCreate", async (message) => {
       // Step 2 — metadata
       const metadata = await fetchMetadata(url);
       const canonicalUrl = metadata.resolvedUrl ?? url;
-      log("debug", "metadata fetched", { url, canonicalUrl, fetchFailed: metadata.fetchFailed });
+      log("debug", "metadata fetched", {
+        url,
+        canonicalUrl,
+        fetchFailed: metadata.fetchFailed,
+      });
 
       // Step 2b — deduplication
       const alreadyBookmarked = await isAlreadyBookmarked(canonicalUrl);
@@ -61,7 +66,7 @@ client.on("messageCreate", async (message) => {
       log("info", "url classified", {
         url,
         interesting: classification.interesting,
-        reason: classification.reason
+        reason: classification.reason,
       });
 
       if (!classification.interesting) continue;

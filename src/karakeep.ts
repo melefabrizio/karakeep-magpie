@@ -12,17 +12,20 @@ export async function isAlreadyBookmarked(url: string): Promise<boolean> {
   try {
     const res = await fetch(
       `${config.karakeepApiUrl}/bookmarks/check-url?url=${encodeURIComponent(normalizedUrl)}`,
-      { headers: { Authorization: `Bearer ${config.karakeepApiKey}` } }
+      { headers: { Authorization: `Bearer ${config.karakeepApiKey}` } },
     );
     if (!res.ok) return false; // fail open: don't block submission on API errors
-    const data = await res.json() as { bookmarkId: string | null };
+    const data = (await res.json()) as { bookmarkId: string | null };
     return data.bookmarkId !== null;
   } catch {
     return false; // fail open
   }
 }
 
-export async function submitBookmark(url: string, note?: string): Promise<BookmarkResult> {
+export async function submitBookmark(
+  url: string,
+  note?: string,
+): Promise<BookmarkResult> {
   try {
     const res = await fetch(`${config.karakeepApiUrl}/bookmarks`, {
       method: "POST",
@@ -43,6 +46,9 @@ export async function submitBookmark(url: string, note?: string): Promise<Bookma
     }
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }
