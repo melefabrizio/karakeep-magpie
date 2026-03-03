@@ -5,7 +5,7 @@ export interface BookmarkResult {
   error?: string;
 }
 
-export async function submitBookmark(url: string, tags: string[]): Promise<BookmarkResult> {
+export async function submitBookmark(url: string): Promise<BookmarkResult> {
   try {
     const res = await fetch(`${config.karakeepApiUrl}/bookmarks`, {
       method: "POST",
@@ -16,7 +16,6 @@ export async function submitBookmark(url: string, tags: string[]): Promise<Bookm
       body: JSON.stringify({
         type: "link",
         url,
-        tags: tags?.map((name) => ({ name })),
       }),
     });
 

@@ -50,14 +50,13 @@ client.on("messageCreate", async (message) => {
       log("info", "url classified", {
         url,
         interesting: classification.interesting,
-        reason: classification.reason,
-        tags: classification.tags,
+        reason: classification.reason
       });
 
       if (!classification.interesting) continue;
 
       // Submit to Karakeep
-      const result = await submitBookmark(url, classification.tags);
+      const result = await submitBookmark(url);
       if (result.ok) {
         await message.react(config.successEmoji);
       } else {
