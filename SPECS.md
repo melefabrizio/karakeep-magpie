@@ -34,12 +34,15 @@ export const config = {
   // AWS Bedrock (picked up automatically from env / instance profile)
   awsRegion: process.env.AWS_REGION ?? "eu-west-1",
 
-  // Pipeline
+  // Pipeline — blocked domains
+  // Hard-coded baseline. Merged at runtime with BLOCKED_DOMAINS env var
+  // (comma-separated, e.g. "notion.so,linear.app").
   blockedDomains: [
     "drive.google.com",
     "clickup.com",
     "monade.io",
     "monadeapps.xyz",
+    ...(process.env.BLOCKED_DOMAINS?.split(",").map((d) => d.trim()).filter(Boolean) ?? []),
   ],
 
   // Metadata fetch timeout
@@ -244,10 +247,100 @@ AWS credentials for Bedrock are passed via environment variables (`AWS_ACCESS_KE
 }
 ```
 
+## Planned Improvements
+
+### [NOT IMPLEMENTED] Fix: remove tags from classification + submission
+
+Tagging is handled entirely by Karakeep after submission. The classifier no longer needs to produce tags, and the Karakeep API call should not include a `tags` field.
+
+Changes required:
+- `src/pipeline/classify.ts` — remove `tags` from Zod schema and `ClassifyResult`; remove unused `import { error } from "console"`
+- `src/karakeep.ts` — remove `tags` parameter from `submitBookmark`
+- `src/index.ts` — remove `tags` from the `submitBookmark` call
+
+---
+
+### [NOT IMPLEMENTED] Configurable blocked domains via env var
+
+The `BLOCKED_DOMAINS` env var (comma-separated hostnames) should be merged with the hard-coded baseline at startup. This lets the list be extended at deploy time without code changes.
+
+```
+BLOCKED_DOMAINS=notion.so,linear.app,figma.com
+```
+
+Config change: spread `process.env.BLOCKED_DOMAINS?.split(",")` into `blockedDomains` array.
+
+---
+
+### [NOT IMPLEMENTED] Metadata: follow redirects + existence check
+
+`fetchMetadata` should:
+1. **Follow redirects** transparently (Node `fetch` does this by default; no change needed for the common case). Track the final resolved URL so the classifier sees the canonical destination, not a `t.co` or `bit.ly` shortener.
+2. **Treat non-200 final responses as `fetchFailed: true`** and include a `resolvedUrl` field in `UrlMetadata` when the URL was redirected.
+
+```typescript
+interface UrlMetadata {
+  url: string;           // original URL as posted
+  resolvedUrl?: string;  // final URL after redirects (if different)
+  domain: string;        // hostname of resolvedUrl (or url if no redirect)
+  ...
+  fetchFailed: boolean;
+}
+```
+
+The resolved URL should be used for deduplication (below) and for the Karakeep submission, so shortlinks don't create duplicate bookmarks for the same canonical page.
+
+---
+
+### [NOT IMPLEMENTED] Deduplication via Karakeep API
+
+Before submitting, check whether the URL already exists in Karakeep:
+
+```
+GET {karakeepApiUrl}/bookmarks?url={encodedUrl}
+Authorization: Bearer {karakeepApiKey}
+```
+
+If the response contains at least one bookmark matching that URL, skip submission and log `"url already bookmarked"`. This works across bot restarts and days without any local state.
+
+Use the **resolved URL** (after redirects) for the lookup so that `bit.ly/xxx` and the canonical URL don't create duplicates.
+
+Implementation sketch in `src/karakeep.ts`:
+```typescript
+export async function isAlreadyBookmarked(url: string): Promise<boolean> { ... }
+```
+
+Called in `index.ts` after metadata fetch, before classification (no point paying for an LLM call if the URL is already saved).
+
+---
+
+### [NOT IMPLEMENTED] Pass Discord message context as Karakeep note
+
+When submitting a bookmark, include a `note` field with context from the original Discord message:
+
+```json
+{
+  "type": "link",
+  "url": "...",
+  "note": "Shared by @username in #channel-name\n\n> original message text"
+}
+```
+
+This preserves the human context (who shared it, why, with what comment) inside Karakeep, which otherwise shows only the URL title/description.
+
+The note is built in `index.ts` from `message.author.username`, `message.channel` (name or id), and `message.content` (with the URL stripped or kept — keep it for context).
+
+`submitBookmark` signature change:
+```typescript
+export async function submitBookmark(url: string, note?: string): Promise<BookmarkResult>
+```
+
+---
+
 ## Open Questions / Future Work
 
-- **Deduplication**: currently no persistence. If the same URL is posted twice, it gets submitted twice. Options: in-memory Set (lost on restart), small SQLite db, or rely on Karakeep's own dedup.
 - **Rate limiting**: if a channel gets flooded with links, the bot will fire many LLM calls in parallel. Consider a simple concurrency limiter (e.g. `p-limit`).
 - **Multi-guild support**: current design assumes a single Discord server. Scaling to multiple servers only requires making `channelIds` guild-aware.
 - **Prompt tuning**: the classification prompt will need iteration based on real traffic. Consider logging all LLM decisions for a week before trusting it fully.
 - **Feedback loop**: a Discord slash command like `/magpie why <url>` that explains why a URL was or wasn't bookmarked could help tune the system.
+- **`messageUpdate` handler**: edited messages that add a URL are currently ignored.
