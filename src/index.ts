@@ -26,6 +26,7 @@ client.once("ready", async (c) => {
 
   const rest = new REST().setToken(config.discordToken);
   try {
+    // PUT replaces the full command list — keep this array in sync if adding more commands
     await rest.put(Routes.applicationCommands(c.application.id), {
       body: [
         {
@@ -51,35 +52,42 @@ client.on("interactionCreate", async (interaction) => {
 
   await interaction.deferReply({ ephemeral: true });
 
-  const message = interaction.targetMessage;
-  const urls = extractUrls(message);
+  try {
+    const message = interaction.targetMessage;
+    const urls = extractUrls(message);
 
-  if (urls.length === 0) {
-    await interaction.editReply("No URLs found in that message.");
-    return;
-  }
-
-  const channelName =
-    "name" in message.channel ? `#${message.channel.name}` : message.channelId;
-  const note = `Manually bookmarked by @${interaction.user.username} in ${channelName}\n\n> ${message.content}`;
-
-  let anySuccess = false;
-  for (const url of urls) {
-    log("info", "manual bookmark", { url, invokedBy: interaction.user.username });
-    const result = await submitBookmark(url, note);
-    if (result.ok) {
-      anySuccess = true;
-    } else {
-      log("warn", "manual bookmark submission failed", { url, error: result.error });
+    if (urls.length === 0) {
+      await interaction.editReply("No URLs found in that message.");
+      return;
     }
-  }
 
-  if (anySuccess) {
-    await message.react(config.successEmoji);
-    const count = urls.length === 1 ? "1 link" : `${urls.length} links`;
-    await interaction.editReply(`Saved ${count}.`);
-  } else {
-    await interaction.editReply("Failed to bookmark — check the logs.");
+    const channelName =
+      "name" in message.channel ? `#${message.channel.name}` : message.channelId;
+    const note = `Manually bookmarked by @${interaction.user.username} in ${channelName}\n\n> ${message.content}`;
+
+    let saved = 0;
+    for (const url of urls) {
+      log("info", "manual bookmark", { url, invokedBy: interaction.user.username });
+      const result = await submitBookmark(url, note);
+      if (result.ok) {
+        saved++;
+      } else {
+        log("warn", "manual bookmark submission failed", { url, error: result.error });
+      }
+    }
+
+    if (saved > 0) {
+      await message.react(config.successEmoji);
+      const count = saved === 1 ? "1 link" : `${saved} links`;
+      await interaction.editReply(`Saved ${count}.`);
+    } else {
+      await interaction.editReply("Failed to bookmark — check the logs.");
+    }
+  } catch (err) {
+    log("error", "manual bookmark error", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    await interaction.editReply("Something went wrong — check the logs.").catch(() => {});
   }
 });
 
