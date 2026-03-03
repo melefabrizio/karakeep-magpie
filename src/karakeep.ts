@@ -16,7 +16,7 @@ export async function submitBookmark(url: string, tags: string[]): Promise<Bookm
       body: JSON.stringify({
         type: "link",
         url,
-        tags: tags.map((name) => ({ name })),
+        tags: tags?.map((name) => ({ name })),
       }),
     });
 
