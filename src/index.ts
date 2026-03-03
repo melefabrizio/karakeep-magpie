@@ -1,4 +1,10 @@
-import { Client, GatewayIntentBits } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  REST,
+  Routes,
+  ApplicationCommandType,
+} from "discord.js";
 import { config } from "./config.js";
 import { log } from "./logger.js";
 import { extractUrls } from "./pipeline/extract.js";
@@ -15,72 +21,71 @@ const client = new Client({
   ],
 });
 
-client.once("ready", (c) => {
+client.once("ready", async (c) => {
   log("info", "bot ready", { username: c.user.tag });
+
+  const rest = new REST().setToken(config.discordToken);
+  try {
+    await rest.put(Routes.applicationCommands(c.application.id), {
+      body: [
+        {
+          name: config.bookmarkCommandName,
+          type: ApplicationCommandType.Message,
+        },
+      ],
+    });
+    log("info", "context menu command registered", {
+      name: config.bookmarkCommandName,
+    });
+  } catch (err) {
+    log("error", "failed to register context menu command", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+// Manual bookmark: right-click a message → Apps → "Save to Magpie"
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isMessageContextMenuCommand()) return;
+  if (interaction.commandName !== config.bookmarkCommandName) return;
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const message = interaction.targetMessage;
+  const urls = extractUrls(message);
+
+  if (urls.length === 0) {
+    await interaction.editReply("No URLs found in that message.");
+    return;
+  }
+
+  const channelName =
+    "name" in message.channel ? `#${message.channel.name}` : message.channelId;
+  const note = `Manually bookmarked by @${interaction.user.username} in ${channelName}\n\n> ${message.content}`;
+
+  let anySuccess = false;
+  for (const url of urls) {
+    log("info", "manual bookmark", { url, invokedBy: interaction.user.username });
+    const result = await submitBookmark(url, note);
+    if (result.ok) {
+      anySuccess = true;
+    } else {
+      log("warn", "manual bookmark submission failed", { url, error: result.error });
+    }
+  }
+
+  if (anySuccess) {
+    await message.react(config.successEmoji);
+    const count = urls.length === 1 ? "1 link" : `${urls.length} links`;
+    await interaction.editReply(`Saved ${count}.`);
+  } else {
+    await interaction.editReply("Failed to bookmark — check the logs.");
+  }
 });
 
 client.on("messageCreate", async (message) => {
   if (!config.channelIds.includes(message.channelId)) return;
   if (message.author.bot) return;
-
-  // Manual bookmark command: reply to a message with !bookmark to force-save it
-  if (
-    message.content.trim().toLowerCase().startsWith(config.bookmarkCommand.toLowerCase())
-  ) {
-    if (!message.reference?.messageId) {
-      log("info", "manual bookmark ignored: not a reply", {
-        invokedBy: message.author.username,
-      });
-      return;
-    }
-
-    try {
-      const referenced = await message.channel.messages.fetch(
-        message.reference.messageId,
-      );
-      const urls = extractUrls(referenced);
-
-      if (urls.length === 0) {
-        log("info", "manual bookmark: no urls in referenced message", {
-          invokedBy: message.author.username,
-          referencedMessageId: referenced.id,
-        });
-        await referenced.react(config.errorEmoji);
-        return;
-      }
-
-      const channelName =
-        "name" in referenced.channel
-          ? `#${referenced.channel.name}`
-          : referenced.channelId;
-      const note = `Manually bookmarked by @${message.author.username} in ${channelName}\n\n> ${referenced.content}`;
-
-      let anySuccess = false;
-      for (const url of urls) {
-        log("info", "manual bookmark", {
-          url,
-          invokedBy: message.author.username,
-        });
-        const result = await submitBookmark(url, note);
-        if (result.ok) {
-          anySuccess = true;
-        } else {
-          log("warn", "manual bookmark submission failed", {
-            url,
-            error: result.error,
-          });
-        }
-      }
-
-      await referenced.react(anySuccess ? config.successEmoji : config.errorEmoji);
-    } catch (err) {
-      log("error", "manual bookmark error", {
-        error: err instanceof Error ? err.message : String(err),
-      });
-      await message.react(config.errorEmoji);
-    }
-    return;
-  }
 
   const urls = extractUrls(message);
   if (urls.length === 0) return;

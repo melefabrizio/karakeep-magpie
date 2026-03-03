@@ -47,8 +47,8 @@ DISCARD if the URL is:
 - News articles about funding rounds, acquisitions, or corporate drama with no technical content
 - Anything unrelated to software, technology, or building things`,
 
-  // Manual bookmark command (reply to a message with this to force-save it)
-  bookmarkCommand: process.env.BOOKMARK_COMMAND ?? "!bookmark",
+  // Context menu command name for manual bookmarking
+  bookmarkCommandName: process.env.BOOKMARK_COMMAND_NAME ?? "Save to Magpie",
 
   // Reaction emoji on successful bookmark
   successEmoji: "🐦",
